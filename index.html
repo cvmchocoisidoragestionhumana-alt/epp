@@ -127,7 +127,10 @@
     <div class="stat"><div class="lbl">Entregados</div><div id="stat-ent" class="num" style="color:var(--verde-txt);">0</div></div>
   </div>
 
-  <input id="search" type="text" placeholder="Buscar por c&eacute;dula, nombre o gerencia..." oninput="render()" />
+  <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+    <input id="search" type="text" placeholder="Buscar por c&eacute;dula, nombre o gerencia..." oninput="render()" style="flex:1; min-width:200px; margin:0;" />
+    <button onclick="descargarExcel()" style="background:var(--verde-txt); color:#fff; border:none; padding:9px 16px; border-radius:8px; font-size:14px; font-weight:bold; cursor:pointer; white-space:nowrap;">&#11015; Descargar Excel</button>
+  </div>
 
   <div id="list"></div>
   <p id="empty" class="empty">Sin registros todav&iacute;a.</p>
@@ -265,6 +268,37 @@ function chip(label, talla, cant){
   if(cant)  txt += (talla?' ':'') + '&times;<b>'+cant+'</b>';
   return '<span class="chip">'+txt+'</span>';
 }
+
+window.descargarExcel = function(){
+  if(!role) return;
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  const filtered = records.filter(r=>!q || (r.cedula||'').toLowerCase().includes(q) || (r.nombre||'').toLowerCase().includes(q) || (r.gerencia||'').toLowerCase().includes(q));
+  if(filtered.length === 0){ alert("No hay registros para exportar."); return; }
+
+  const headers = ["C\u00E9dula","Nombre y apellido","Gerencia","Registrado por","Fecha de registro",
+    "Braga talla","Braga cant.","Bota goma talla","Bota goma cant.","Bota cuero talla","Bota cuero cant.",
+    "Guantes talla","Guantes cant.","Mascarilla talla","Mascarilla cant.",
+    "Estado","Entregado por","Fecha de entrega"];
+
+  const esc = (v)=>{ v = (v===null||v===undefined)?'':String(v); return '"'+v.replace(/"/g,'""')+'"'; };
+
+  const rows = filtered.map(r=>[
+    r.cedula, r.nombre, r.gerencia, r.registradoPor, fmtDate(r.fechaRegistro),
+    r.braga_t, r.braga_c, r.goma_t, r.goma_c, r.cuero_t, r.cuero_c,
+    r.guantes_t, r.guantes_c, r.masc_t, r.masc_c,
+    (r.entregado?'Entregado':'Pendiente'), r.entregadoPor, (r.entregado?fmtDate(r.fechaEntrega):'')
+  ].map(esc).join(';'));
+
+  const csv = "\uFEFF" + headers.map(esc).join(';') + "\r\n" + rows.join("\r\n");
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const hoy = new Date();
+  const fname = "Reporte_EPP_" + hoy.getFullYear() + ("0"+(hoy.getMonth()+1)).slice(-2) + ("0"+hoy.getDate()).slice(-2) + ".csv";
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 window.render = function(){
   if(!role) return;
