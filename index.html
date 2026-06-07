@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Control de Entrega de EPP &middot; CVM</title>
+<style>
+  :root{
+    --azul:#185FA5; --azul-claro:#E6F1FB; --gris-bg:#F1EFE8; --gris-txt:#5F5E5A;
+    --verde-bg:#EAF3DE; --verde-txt:#3B6D11; --ambar-bg:#FAEEDA; --ambar-txt:#854F0B;
+    --rojo:#A32D2D; --borde:#D3D1C7;
+  }
+  *{box-sizing:border-box; font-family:Arial,Helvetica,sans-serif;}
+  body{margin:0; background:var(--gris-bg); color:#2C2C2A;}
+  header{background:var(--azul); color:#fff; padding:14px 20px;}
+  header h1{margin:0; font-size:18px; font-weight:bold;}
+  header p{margin:2px 0 0; font-size:12px; opacity:.85;}
+  .wrap{max-width:880px; margin:0 auto; padding:16px;}
+  .rolebar{display:flex; gap:8px; align-items:center; margin-bottom:14px; flex-wrap:wrap;}
+  .rolebar button{padding:8px 16px; border:1px solid var(--borde); background:#fff; border-radius:8px; cursor:pointer; font-size:14px;}
+  .rolebar button.active{background:var(--azul-claro); border-color:var(--azul); font-weight:bold; color:var(--azul);}
+  #sync{margin-left:auto; font-size:12px; color:var(--gris-txt);}
+  .card{background:#fff; border:1px solid var(--borde); border-radius:12px; padding:16px; margin-bottom:14px;}
+  .card h2{margin:0 0 12px; font-size:15px;}
+  label{font-size:12px; color:var(--gris-txt); display:block; margin-bottom:3px;}
+  input,select{width:100%; padding:8px; border:1px solid var(--borde); border-radius:8px; font-size:14px; background:#fff;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;}
+  .epp-row{display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:8px; align-items:end; margin-top:10px; padding:8px; background:var(--gris-bg); border-radius:8px;}
+  .epp-row .epp-name{font-size:13px; font-weight:bold; color:var(--azul); align-self:center;}
+  .btn-add{margin-top:14px; background:var(--azul); color:#fff; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-size:14px; font-weight:bold;}
+  .stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;}
+  .stat{background:#fff; border:1px solid var(--borde); border-radius:8px; padding:12px;}
+  .stat .lbl{font-size:12px; color:var(--gris-txt);}
+  .stat .num{font-size:24px; font-weight:bold;}
+  #search{margin-bottom:12px;}
+  .rec{background:#fff; border:1px solid var(--borde); border-radius:12px; padding:14px; margin-bottom:10px;}
+  .rec .top{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .rec .nom{font-weight:bold; font-size:15px; margin:0;}
+  .rec .sub{font-size:12px; color:var(--gris-txt); margin:2px 0 0;}
+  .chip{display:inline-block; background:var(--gris-bg); border-radius:8px; font-size:12px; padding:3px 9px; margin:3px 4px 0 0;}
+  .badge{font-size:12px; padding:4px 10px; border-radius:8px; white-space:nowrap;}
+  .b-pend{background:var(--ambar-bg); color:var(--ambar-txt);}
+  .b-ent{background:var(--verde-bg); color:var(--verde-txt);}
+  .foot{display:flex; justify-content:space-between; align-items:center; margin-top:10px; border-top:1px solid var(--borde); padding-top:8px;}
+  .foot .fecha{font-size:11px; color:#888;}
+  .btn-ent{background:var(--verde-txt); color:#fff; border:none; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold;}
+  .btn-undo{background:#fff; border:1px solid var(--borde); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px;}
+  .msg{font-size:12px; color:var(--rojo); margin-left:10px;}
+  .empty{text-align:center; color:#999; padding:24px; font-size:14px;}
+</style>
+</head>
+<body>
+
+<!-- ===== PANTALLA DE ACCESO ===== -->
+<div id="login-screen" style="position:fixed; inset:0; background:var(--azul); display:flex; align-items:center; justify-content:center; z-index:9999;">
+  <div style="background:#fff; border-radius:14px; padding:28px; width:90%; max-width:360px; box-shadow:0 8px 30px rgba(0,0,0,.25);">
+    <h1 style="margin:0 0 4px; font-size:20px; color:var(--azul);">Control de Entrega de EPP</h1>
+    <p style="margin:0 0 20px; font-size:13px; color:var(--gris-txt);">CVM &middot; Acceso al sistema</p>
+    <label style="font-size:12px; color:var(--gris-txt); display:block; margin-bottom:4px;">Selecciona tu rol</label>
+    <select id="login-role" style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:8px; font-size:14px; margin-bottom:12px;">
+      <option value="rrhh">Recursos Humanos</option>
+      <option value="almacen">Almac&eacute;n</option>
+    </select>
+    <label style="font-size:12px; color:var(--gris-txt); display:block; margin-bottom:4px;">Clave de acceso</label>
+    <input id="login-pass" type="password" placeholder="Escribe tu clave" style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:8px; font-size:14px;" onkeydown="if(event.key==='Enter')doLogin()" />
+    <button onclick="doLogin()" style="margin-top:16px; width:100%; background:var(--azul); color:#fff; border:none; padding:12px; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer;">Ingresar</button>
+    <p id="login-msg" style="font-size:12px; color:var(--rojo); margin:10px 0 0; text-align:center; min-height:16px;"></p>
+  </div>
+</div>
+
+<!-- ===== APLICACIÓN (oculta hasta iniciar sesión) ===== -->
+<div id="app" style="display:none;">
+<header>
+  <h1>Control de Entrega de EPP</h1>
+  <p>CVM &middot; Recursos Humanos &harr; Almac&eacute;n</p>
+</header>
+
+<div class="wrap">
+  <div class="rolebar">
+    <span id="role-label" style="font-size:13px; color:var(--gris-txt); font-weight:bold;"></span>
+    <button id="btn-salir" onclick="logout()" style="border-color:var(--rojo); color:var(--rojo);">Salir</button>
+    <span id="sync">Conectando&hellip;</span>
+  </div>
+
+  <div id="form-card" class="card">
+    <h2>Registrar autorizaci&oacute;n de EPP</h2>
+    <div class="grid">
+      <div><label>C&eacute;dula</label><input id="f-cedula" type="text" placeholder="V-12345678" /></div>
+      <div><label>Nombre y apellido</label><input id="f-nombre" type="text" placeholder="Nombre completo" /></div>
+      <div><label>Gerencia</label><input id="f-gerencia" type="text" placeholder="Gerencia / Dpto" /></div>
+      <div><label>Registrado por (RRHH)</label><input id="f-regpor" type="text" placeholder="Nombre de quien autoriza" /></div>
+    </div>
+
+    <div class="epp-row">
+      <span class="epp-name">Braga</span>
+      <div><label>Talla</label><select id="f-braga-t"><option value="">&mdash;</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>XXXL</option></select></div>
+      <div><label>Cantidad</label><input id="f-braga-c" type="number" min="0" placeholder="0" /></div>
+    </div>
+    <div class="epp-row">
+      <span class="epp-name">Bota de goma</span>
+      <div><label>Talla</label><select id="f-goma-t"><option value="">&mdash;</option><option>36</option><option>37</option><option>38</option><option>39</option><option>40</option><option>41</option><option>42</option><option>43</option><option>44</option><option>45</option><option>46</option></select></div>
+      <div><label>Cantidad</label><input id="f-goma-c" type="number" min="0" placeholder="0" /></div>
+    </div>
+    <div class="epp-row">
+      <span class="epp-name">Bota de cuero</span>
+      <div><label>Talla</label><select id="f-cuero-t"><option value="">&mdash;</option><option>36</option><option>37</option><option>38</option><option>39</option><option>40</option><option>41</option><option>42</option><option>43</option><option>44</option><option>45</option><option>46</option></select></div>
+      <div><label>Cantidad</label><input id="f-cuero-c" type="number" min="0" placeholder="0" /></div>
+    </div>
+    <div class="epp-row">
+      <span class="epp-name">Guantes</span>
+      <div><label>Talla</label><select id="f-guantes-t"><option value="">&mdash;</option><option>S</option><option>M</option><option>L</option><option>XL</option></select></div>
+      <div><label>Cantidad</label><input id="f-guantes-c" type="number" min="0" placeholder="0" /></div>
+    </div>
+    <div class="epp-row">
+      <span class="epp-name">Mascarilla</span>
+      <div><label>Talla / Tipo</label><select id="f-masc-t"><option value="">&mdash;</option><option>S</option><option>M</option><option>L</option><option>Talla &uacute;nica</option></select></div>
+      <div><label>Cantidad</label><input id="f-masc-c" type="number" min="0" placeholder="0" /></div>
+    </div>
+
+    <button class="btn-add" onclick="addRecord()">+ Registrar autorizaci&oacute;n</button>
+    <span id="form-msg" class="msg"></span>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="lbl">Total registros</div><div id="stat-total" class="num">0</div></div>
+    <div class="stat"><div class="lbl">Pendientes</div><div id="stat-pend" class="num" style="color:var(--ambar-txt);">0</div></div>
+    <div class="stat"><div class="lbl">Entregados</div><div id="stat-ent" class="num" style="color:var(--verde-txt);">0</div></div>
+  </div>
+
+  <input id="search" type="text" placeholder="Buscar por c&eacute;dula, nombre o gerencia..." oninput="render()" />
+
+  <div id="list"></div>
+  <p id="empty" class="empty">Sin registros todav&iacute;a.</p>
+</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, push, update, onValue }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAPSi75DrDQxJaZuSksJlm7h1S3W7-X8uU",
+  authDomain: "epe-cvm.firebaseapp.com",
+  databaseURL: "https://epe-cvm-default-rtdb.firebaseio.com",
+  projectId: "epe-cvm",
+  storageBucket: "epe-cvm.firebasestorage.app",
+  messagingSenderId: "73048665144",
+  appId: "1:73048665144:web:98f36311012b67d5ae8acd"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const eppRef = ref(db, "entregas_epp");
+
+/* ============================================================
+   CLAVES DE ACCESO  —  CAMBIA ESTAS DOS POR LAS TUYAS
+   ============================================================ */
+const CLAVE_RRHH    = "ruthcvmepp2026";
+const CLAVE_ALMACEN = "almacencvm2026";
+/* ============================================================ */
+
+let records = [];
+let role = null;
+
+window.doLogin = function(){
+  const r = document.getElementById('login-role').value;
+  const p = document.getElementById('login-pass').value;
+  const msg = document.getElementById('login-msg');
+  if(r === 'rrhh' && p === CLAVE_RRHH){
+    role = 'rrhh';
+  } else if(r === 'almacen' && p === CLAVE_ALMACEN){
+    role = 'almacen';
+  } else {
+    msg.textContent = "Clave incorrecta para el rol seleccionado.";
+    return;
+  }
+  msg.textContent = "";
+  document.getElementById('login-pass').value = "";
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('role-label').textContent =
+    role === 'rrhh' ? 'Recursos Humanos' : 'Almacén';
+  document.getElementById('form-card').style.display = role === 'rrhh' ? 'block' : 'none';
+  render();
+};
+
+window.logout = function(){
+  role = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-pass').value = "";
+};
+
+onValue(eppRef, (snap) => {
+  records = [];
+  const val = snap.val() || {};
+  Object.keys(val).forEach(k => records.push({ id:k, ...val[k] }));
+  records.sort((a,b)=> (b.fechaRegistro||0) - (a.fechaRegistro||0));
+  document.getElementById('sync').textContent = "\u25CF Sincronizado en tiempo real";
+  document.getElementById('sync').style.color = "var(--verde-txt)";
+  render();
+}, (err) => {
+  document.getElementById('sync').textContent = "Error de conexi\u00F3n";
+  console.error(err);
+});
+
+window.addRecord = function(){
+  if(role !== 'rrhh') return;
+  const ced = document.getElementById('f-cedula').value.trim();
+  const nom = document.getElementById('f-nombre').value.trim();
+  const ger = document.getElementById('f-gerencia').value.trim();
+  const msg = document.getElementById('form-msg');
+  if(!ced || !nom){ msg.textContent = "C\u00E9dula y nombre son obligatorios."; return; }
+  msg.textContent = "";
+  push(eppRef, {
+    cedula: ced, nombre: nom, gerencia: ger,
+    registradoPor: document.getElementById('f-regpor').value.trim(),
+    braga_t: document.getElementById('f-braga-t').value,
+    braga_c: document.getElementById('f-braga-c').value,
+    goma_t: document.getElementById('f-goma-t').value,
+    goma_c: document.getElementById('f-goma-c').value,
+    cuero_t: document.getElementById('f-cuero-t').value,
+    cuero_c: document.getElementById('f-cuero-c').value,
+    guantes_t: document.getElementById('f-guantes-t').value,
+    guantes_c: document.getElementById('f-guantes-c').value,
+    masc_t: document.getElementById('f-masc-t').value,
+    masc_c: document.getElementById('f-masc-c').value,
+    entregado: false, fechaEntrega: null, entregadoPor: null,
+    fechaRegistro: Date.now()
+  });
+  ['f-cedula','f-nombre','f-gerencia','f-regpor','f-braga-t','f-braga-c','f-goma-t','f-goma-c','f-cuero-t','f-cuero-c','f-guantes-t','f-guantes-c','f-masc-t','f-masc-c'].forEach(i=>document.getElementById(i).value='');
+};
+
+window.entregar = function(id){
+  if(role !== 'almacen') return;
+  const input = document.getElementById('ent-input-'+id);
+  const quien = input ? input.value.trim() : '';
+  if(!quien){ alert("Escriba el nombre de quien entrega antes de confirmar."); return; }
+  update(ref(db, "entregas_epp/"+id), {
+    entregado: true,
+    fechaEntrega: Date.now(),
+    entregadoPor: quien
+  });
+};
+
+window.deshacer = function(id){
+  update(ref(db, "entregas_epp/"+id), {
+    entregado: false,
+    fechaEntrega: null,
+    entregadoPor: null
+  });
+};
+
+function fmtDate(ts){
+  if(!ts) return '\u2014';
+  const d = new Date(ts);
+  return d.toLocaleDateString('es-VE',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' +
+         d.toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'});
+}
+function chip(label, talla, cant){
+  if(!talla && !cant) return '';
+  let txt = label + ': ';
+  if(talla) txt += 'talla <b>'+talla+'</b>';
+  if(cant)  txt += (talla?' ':'') + '&times;<b>'+cant+'</b>';
+  return '<span class="chip">'+txt+'</span>';
+}
+
+window.render = function(){
+  if(!role) return;
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  const filtered = records.filter(r=>!q || (r.cedula||'').toLowerCase().includes(q) || (r.nombre||'').toLowerCase().includes(q) || (r.gerencia||'').toLowerCase().includes(q));
+  document.getElementById('stat-total').textContent = records.length;
+  document.getElementById('stat-pend').textContent = records.filter(r=>!r.entregado).length;
+  document.getElementById('stat-ent').textContent = records.filter(r=>r.entregado).length;
+  document.getElementById('empty').style.display = filtered.length ? 'none' : 'block';
+  document.getElementById('list').innerHTML = filtered.map(r=>{
+    const chips = chip('Braga',r.braga_t,r.braga_c)+chip('Bota goma',r.goma_t,r.goma_c)+chip('Bota cuero',r.cuero_t,r.cuero_c)+chip('Guantes',r.guantes_t,r.guantes_c)+chip('Mascarilla',r.masc_t,r.masc_c);
+    const status = r.entregado
+      ? '<span class="badge b-ent">\u2713 Entregado '+fmtDate(r.fechaEntrega)+'</span>'
+      : '<span class="badge b-pend">Pendiente</span>';
+    let action = '';
+    if(role==='almacen'){
+      if(r.entregado){
+        action = '<button class="btn-undo" onclick="deshacer(\''+r.id+'\')">Deshacer</button>';
+      } else {
+        action = '<div style="display:flex; gap:6px; align-items:center;">'
+          + '<input id="ent-input-'+r.id+'" type="text" placeholder="Nombre de quien entrega" style="width:180px; padding:6px; font-size:12px;" />'
+          + '<button class="btn-ent" onclick="entregar(\''+r.id+'\')">\u2713 Entregado</button></div>';
+      }
+    }
+    const regLine = 'Registrado por: <b>'+(r.registradoPor||'\u2014')+'</b> \u00B7 '+fmtDate(r.fechaRegistro);
+    const entLine = r.entregado
+      ? '<br>Entregado por: <b>'+(r.entregadoPor||'\u2014')+'</b> \u00B7 '+fmtDate(r.fechaEntrega)
+      : '';
+    return '<div class="rec"><div class="top"><div><p class="nom">'+(r.nombre||'')+'</p>'
+      + '<p class="sub">'+(r.cedula||'')+(r.gerencia?' \u00B7 '+r.gerencia:'')+'</p></div>'
+      + '<div>'+status+'</div></div>'
+      + '<div style="margin-top:8px;">'+(chips||'<span class="sub">Sin EPP especificado</span>')+'</div>'
+      + '<div class="foot"><span class="fecha">'+regLine+entLine+'</span></div>'
+      + (action ? '<div style="margin-top:8px; display:flex; justify-content:flex-end;">'+action+'</div>' : '')
+      + '</div>';
+  }).join('');
+};
+</script>
+</body>
+</html>
