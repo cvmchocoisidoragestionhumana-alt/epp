@@ -139,7 +139,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, push, update, onValue }
+import { getDatabase, ref, push, update, remove, onValue }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -255,6 +255,15 @@ window.deshacer = function(id){
   });
 };
 
+window.eliminar = function(id){
+  if(role !== 'rrhh') return;
+  const rec = records.find(r=>r.id===id);
+  const nom = rec ? (rec.nombre||'este registro') : 'este registro';
+  if(confirm("\u00BFEliminar el registro de "+nom+"?\n\nEsta acci\u00F3n no se puede deshacer.")){
+    remove(ref(db, "entregas_epp/"+id));
+  }
+};
+
 function fmtDate(ts){
   if(!ts) return '\u2014';
   const d = new Date(ts);
@@ -322,6 +331,8 @@ window.render = function(){
           + '<input id="ent-input-'+r.id+'" type="text" placeholder="Nombre de quien entrega" style="width:180px; padding:6px; font-size:12px;" />'
           + '<button class="btn-ent" onclick="entregar(\''+r.id+'\')">\u2713 Entregado</button></div>';
       }
+    } else if(role==='rrhh'){
+      action = '<button onclick="eliminar(\''+r.id+'\')" style="background:#fff; border:1px solid var(--rojo); color:var(--rojo); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold;">\uD83D\uDDD1 Eliminar</button>';
     }
     const regLine = 'Registrado por: <b>'+(r.registradoPor||'\u2014')+'</b> \u00B7 '+fmtDate(r.fechaRegistro);
     const entLine = r.entregado
