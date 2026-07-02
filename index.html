@@ -47,6 +47,18 @@
   .btn-undo{background:#fff; border:1px solid var(--borde); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px;}
   .msg{font-size:12px; color:var(--rojo); margin-left:10px;}
   .empty{text-align:center; color:#999; padding:24px; font-size:14px;}
+  /* ===== Pestañas ===== */
+  .tabs{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+  .tabs button{flex:1; min-width:160px; padding:11px 16px; border:1px solid var(--borde); background:#fff; border-radius:10px; cursor:pointer; font-size:14px; font-weight:bold; color:var(--gris-txt);}
+  .tabs button.active{background:var(--azul); border-color:var(--azul); color:#fff;}
+  /* ===== Módulo por planta ===== */
+  .item-row{display:grid; grid-template-columns:90px 1fr 40px; gap:8px; align-items:end; margin-top:8px; padding:8px; background:var(--gris-bg); border-radius:8px;}
+  .item-row .del{background:var(--rojo); color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:16px; height:36px; align-self:end;}
+  .btn-item{margin-top:10px; background:#fff; color:var(--azul); border:1px dashed var(--azul); padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:bold;}
+  .rec .planta-nom{font-weight:bold; font-size:16px; color:var(--azul); margin:0;}
+  .item-line{display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px dashed var(--borde); font-size:13px;}
+  .item-line:last-child{border-bottom:none;}
+  .item-line .cant{font-weight:bold; color:var(--azul); min-width:60px;}
 </style>
 </head>
 <body>
@@ -81,6 +93,15 @@
     <button id="btn-salir" onclick="logout()" style="border-color:var(--rojo); color:var(--rojo);">Salir</button>
     <span id="sync">Conectando&hellip;</span>
   </div>
+
+  <!-- ===== PESTAÑAS ===== -->
+  <div class="tabs">
+    <button id="tab-ind" class="active" onclick="switchTab('ind')">&#128100; Entregas Individuales</button>
+    <button id="tab-planta" onclick="switchTab('planta')">&#127981; Entregas por Planta</button>
+  </div>
+
+  <!-- ===== VISTA: ENTREGAS INDIVIDUALES ===== -->
+  <div id="view-ind">
 
   <div id="form-card" class="card">
     <h2>Registrar autorizaci&oacute;n de EPP</h2>
@@ -134,6 +155,55 @@
 
   <div id="list"></div>
   <p id="empty" class="empty">Sin registros todav&iacute;a.</p>
+
+  </div><!-- fin view-ind -->
+
+  <!-- ===== VISTA: ENTREGAS POR PLANTA ===== -->
+  <div id="view-planta" style="display:none;">
+
+    <div class="card">
+      <h2>Registrar entrega de EPP a una planta</h2>
+      <div class="grid">
+        <div><label>Planta / Unidad solicitante</label>
+          <input id="p-planta" list="plantas-list" type="text" placeholder="Ej: Planta Santa B&aacute;rbara" />
+          <datalist id="plantas-list">
+            <option value="Planta Santa B&aacute;rbara"></option>
+            <option value="Las Vainitas"></option>
+            <option value="Mina Isidora"></option>
+          </datalist>
+        </div>
+        <div><label>Solicitante</label><input id="p-solicitante" type="text" placeholder="Nombre del solicitante" /></div>
+        <div><label>C&eacute;dula del solicitante</label><input id="p-cedula" type="text" placeholder="V-12345678" /></div>
+        <div><label>Autorizado por</label><input id="p-autoriza" type="text" placeholder="Qui&eacute;n autoriz&oacute;" /></div>
+        <div><label>Fecha de emisi&oacute;n</label><input id="p-fecha" type="date" /></div>
+        <div><label>N&deg; de solicitud (opcional)</label><input id="p-num" type="text" placeholder="FOR-SUM-011" /></div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <label style="font-weight:bold; color:var(--azul); font-size:13px;">Detalle de EPP entregado</label>
+        <div id="items-box"></div>
+        <button class="btn-item" onclick="addItemRow()">+ Agregar &iacute;tem</button>
+      </div>
+
+      <button class="btn-add" onclick="addPlantaRecord()" style="margin-top:16px;">+ Registrar entrega a planta</button>
+      <span id="planta-msg" class="msg"></span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="lbl">Total entregas</div><div id="pstat-total" class="num">0</div></div>
+      <div class="stat"><div class="lbl">Plantas distintas</div><div id="pstat-plantas" class="num" style="color:var(--azul);">0</div></div>
+      <div class="stat"><div class="lbl">Total &iacute;tems</div><div id="pstat-items" class="num" style="color:var(--verde-txt);">0</div></div>
+    </div>
+
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+      <input id="psearch" type="text" placeholder="Buscar por planta, solicitante o autoriz&oacute;..." oninput="renderPlanta()" style="flex:1; min-width:200px; margin:0;" />
+      <button onclick="descargarExcelPlanta()" style="background:var(--verde-txt); color:#fff; border:none; padding:9px 16px; border-radius:8px; font-size:14px; font-weight:bold; cursor:pointer; white-space:nowrap;">&#11015; Descargar Excel</button>
+    </div>
+
+    <div id="plist"></div>
+    <p id="pempty" class="empty">Sin entregas por planta todav&iacute;a.</p>
+
+  </div><!-- fin view-planta -->
 </div>
 </div>
 
@@ -155,6 +225,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const eppRef = ref(db, "entregas_epp");
+const plantaRef = ref(db, "entregas_planta");
 
 /* ============================================================
    CLAVES DE ACCESO  —  CAMBIA ESTAS DOS POR LAS TUYAS
@@ -164,7 +235,9 @@ const CLAVE_ALMACEN = "almacencvm2026";
 /* ============================================================ */
 
 let records = [];
+let plantaRecords = [];
 let role = null;
+let currentTab = 'ind';
 
 window.doLogin = function(){
   const r = document.getElementById('login-role').value;
@@ -185,7 +258,18 @@ window.doLogin = function(){
   document.getElementById('role-label').textContent =
     role === 'rrhh' ? 'Recursos Humanos' : 'Almacén';
   document.getElementById('form-card').style.display = role === 'rrhh' ? 'block' : 'none';
+  if(document.getElementById('items-box').children.length === 0) addItemRow();
   render();
+  renderPlanta();
+};
+
+/* ===== Cambio de pestaña ===== */
+window.switchTab = function(tab){
+  currentTab = tab;
+  document.getElementById('view-ind').style.display    = tab === 'ind'    ? 'block' : 'none';
+  document.getElementById('view-planta').style.display = tab === 'planta' ? 'block' : 'none';
+  document.getElementById('tab-ind').classList.toggle('active', tab === 'ind');
+  document.getElementById('tab-planta').classList.toggle('active', tab === 'planta');
 };
 
 window.logout = function(){
@@ -346,6 +430,146 @@ window.render = function(){
       + (action ? '<div style="margin-top:8px; display:flex; justify-content:flex-end;">'+action+'</div>' : '')
       + '</div>';
   }).join('');
+};
+
+/* ============================================================
+   MÓDULO ENTREGAS POR PLANTA
+   ============================================================ */
+
+/* --- Filas de ítems dinámicas --- */
+window.addItemRow = function(cant, desc){
+  const box = document.getElementById('items-box');
+  const row = document.createElement('div');
+  row.className = 'item-row';
+  row.innerHTML =
+      '<div><label>Cantidad</label><input type="number" min="0" class="it-cant" placeholder="0" value="'+(cant||'')+'" /></div>'
+    + '<div><label>Descripci&oacute;n</label><input type="text" class="it-desc" placeholder="Ej: Botas Seg. de Cuero #40" value="'+(desc||'')+'" /></div>'
+    + '<button class="del" title="Quitar" onclick="this.parentElement.remove()">&times;</button>';
+  box.appendChild(row);
+};
+
+window.addPlantaRecord = function(){
+  const planta = document.getElementById('p-planta').value.trim();
+  const msg = document.getElementById('planta-msg');
+  if(!planta){ msg.textContent = "La planta / unidad es obligatoria."; return; }
+
+  const items = [];
+  document.querySelectorAll('#items-box .item-row').forEach(r=>{
+    const c = r.querySelector('.it-cant').value.trim();
+    const d = r.querySelector('.it-desc').value.trim();
+    if(d){ items.push({ cantidad: c || '', descripcion: d }); }
+  });
+  if(items.length === 0){ msg.textContent = "Agrega al menos un &iacute;tem con descripci&oacute;n."; return; }
+  msg.textContent = "";
+
+  push(plantaRef, {
+    planta: planta,
+    solicitante: document.getElementById('p-solicitante').value.trim(),
+    cedula: document.getElementById('p-cedula').value.trim(),
+    autorizadoPor: document.getElementById('p-autoriza').value.trim(),
+    fechaEmision: document.getElementById('p-fecha').value,
+    numSolicitud: document.getElementById('p-num').value.trim(),
+    items: items,
+    registradoPor: role === 'rrhh' ? 'RRHH' : 'Almac\u00E9n',
+    fechaRegistro: Date.now()
+  });
+
+  // Limpiar formulario
+  ['p-planta','p-solicitante','p-cedula','p-autoriza','p-fecha','p-num'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('items-box').innerHTML = '';
+  addItemRow();
+};
+
+window.eliminarPlanta = function(id){
+  const rec = plantaRecords.find(r=>r.id===id);
+  const nom = rec ? (rec.planta||'esta entrega') : 'esta entrega';
+  if(confirm("\u00BFEliminar la entrega a "+nom+"?\n\nEsta acci\u00F3n no se puede deshacer.")){
+    remove(ref(db, "entregas_planta/"+id));
+  }
+};
+
+onValue(plantaRef, (snap) => {
+  plantaRecords = [];
+  const val = snap.val() || {};
+  Object.keys(val).forEach(k => plantaRecords.push({ id:k, ...val[k] }));
+  plantaRecords.sort((a,b)=> (b.fechaRegistro||0) - (a.fechaRegistro||0));
+  renderPlanta();
+}, (err) => { console.error(err); });
+
+function fmtFechaEmision(f){
+  if(!f) return '\u2014';
+  const p = f.split('-');
+  return p.length === 3 ? (p[2]+'/'+p[1]+'/'+p[0]) : f;
+}
+
+window.renderPlanta = function(){
+  if(!role) return;
+  const q = (document.getElementById('psearch').value||'').toLowerCase();
+  const filtered = plantaRecords.filter(r=>!q
+    || (r.planta||'').toLowerCase().includes(q)
+    || (r.solicitante||'').toLowerCase().includes(q)
+    || (r.autorizadoPor||'').toLowerCase().includes(q));
+
+  const plantasSet = new Set(plantaRecords.map(r=>(r.planta||'').trim()).filter(Boolean));
+  const totalItems = plantaRecords.reduce((s,r)=> s + (r.items? r.items.length : 0), 0);
+  document.getElementById('pstat-total').textContent   = plantaRecords.length;
+  document.getElementById('pstat-plantas').textContent = plantasSet.size;
+  document.getElementById('pstat-items').textContent   = totalItems;
+
+  document.getElementById('pempty').style.display = filtered.length ? 'none' : 'block';
+  document.getElementById('plist').innerHTML = filtered.map(r=>{
+    const itemsHtml = (r.items||[]).map(it=>
+      '<div class="item-line"><span class="cant">'+(it.cantidad||'\u2014')+'</span><span style="flex:1; margin-left:10px;">'+(it.descripcion||'')+'</span></div>'
+    ).join('');
+    const sub = [];
+    if(r.solicitante) sub.push('Solicitante: '+r.solicitante);
+    if(r.cedula) sub.push(r.cedula);
+    if(r.numSolicitud) sub.push(r.numSolicitud);
+    const delBtn = '<button onclick="eliminarPlanta(\''+r.id+'\')" style="background:#fff; border:1px solid var(--rojo); color:var(--rojo); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold;">\uD83D\uDDD1 Eliminar</button>';
+    return '<div class="rec">'
+      + '<div class="top"><div><p class="planta-nom">\uD83C\uDFED '+(r.planta||'')+'</p>'
+      + '<p class="sub">'+(sub.join(' \u00B7 ')||'')+'</p></div>'
+      + '<div style="text-align:right;"><span class="badge b-ent">Autoriz\u00F3: <b>'+(r.autorizadoPor||'\u2014')+'</b></span>'
+      + '<p class="sub" style="margin-top:4px;">Emisi\u00F3n: '+fmtFechaEmision(r.fechaEmision)+'</p></div></div>'
+      + '<div style="margin-top:10px; background:var(--gris-bg); border-radius:8px; padding:10px;">'+(itemsHtml||'<span class="sub">Sin \u00EDtems</span>')+'</div>'
+      + '<div class="foot"><span class="fecha">Registrado: '+fmtDate(r.fechaRegistro)+' \u00B7 '+(r.registradoPor||'')+'</span>'+delBtn+'</div>'
+      + '</div>';
+  }).join('');
+};
+
+window.descargarExcelPlanta = function(){
+  if(!role) return;
+  const q = (document.getElementById('psearch').value||'').toLowerCase();
+  const filtered = plantaRecords.filter(r=>!q
+    || (r.planta||'').toLowerCase().includes(q)
+    || (r.solicitante||'').toLowerCase().includes(q)
+    || (r.autorizadoPor||'').toLowerCase().includes(q));
+  if(filtered.length === 0){ alert("No hay entregas para exportar."); return; }
+
+  const headers = ["Planta / Unidad","Solicitante","C\u00E9dula","Autorizado por","Fecha emisi\u00F3n","N\u00B0 solicitud","Cantidad","Descripci\u00F3n EPP","Registrado por","Fecha registro"];
+  const esc = (v)=>{ v = (v===null||v===undefined)?'':String(v); return '"'+v.replace(/"/g,'""')+'"'; };
+
+  const rows = [];
+  filtered.forEach(r=>{
+    const base = [r.planta, r.solicitante, r.cedula, r.autorizadoPor, fmtFechaEmision(r.fechaEmision), r.numSolicitud];
+    if(r.items && r.items.length){
+      r.items.forEach(it=>{
+        rows.push([...base, it.cantidad, it.descripcion, r.registradoPor, fmtDate(r.fechaRegistro)].map(esc).join(';'));
+      });
+    } else {
+      rows.push([...base, '', '', r.registradoPor, fmtDate(r.fechaRegistro)].map(esc).join(';'));
+    }
+  });
+
+  const csv = "\uFEFF" + headers.map(esc).join(';') + "\r\n" + rows.join("\r\n");
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const hoy = new Date();
+  const fname = "Entregas_Planta_EPP_" + hoy.getFullYear() + ("0"+(hoy.getMonth()+1)).slice(-2) + ("0"+hoy.getDate()).slice(-2) + ".csv";
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 };
 </script>
 </body>
