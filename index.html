@@ -161,7 +161,7 @@
   <!-- ===== VISTA: ENTREGAS POR PLANTA ===== -->
   <div id="view-planta" style="display:none;">
 
-    <div class="card">
+    <div class="card" id="planta-form-card">
       <h2>Registrar entrega de EPP a una planta</h2>
       <div class="grid">
         <div><label>Planta / Unidad solicitante</label>
@@ -258,6 +258,7 @@ window.doLogin = function(){
   document.getElementById('role-label').textContent =
     role === 'rrhh' ? 'Recursos Humanos' : 'Almacén';
   document.getElementById('form-card').style.display = role === 'rrhh' ? 'block' : 'none';
+  document.getElementById('planta-form-card').style.display = role === 'rrhh' ? 'block' : 'none';
   if(document.getElementById('items-box').children.length === 0) addItemRow();
   render();
   renderPlanta();
@@ -449,6 +450,7 @@ window.addItemRow = function(cant, desc){
 };
 
 window.addPlantaRecord = function(){
+  if(role !== 'rrhh') return;
   const planta = document.getElementById('p-planta').value.trim();
   const msg = document.getElementById('planta-msg');
   if(!planta){ msg.textContent = "La planta / unidad es obligatoria."; return; }
@@ -481,6 +483,7 @@ window.addPlantaRecord = function(){
 };
 
 window.eliminarPlanta = function(id){
+  if(role !== 'rrhh') return;
   const rec = plantaRecords.find(r=>r.id===id);
   const nom = rec ? (rec.planta||'esta entrega') : 'esta entrega';
   if(confirm("\u00BFEliminar la entrega a "+nom+"?\n\nEsta acci\u00F3n no se puede deshacer.")){
@@ -525,7 +528,9 @@ window.renderPlanta = function(){
     if(r.solicitante) sub.push('Solicitante: '+r.solicitante);
     if(r.cedula) sub.push(r.cedula);
     if(r.numSolicitud) sub.push(r.numSolicitud);
-    const delBtn = '<button onclick="eliminarPlanta(\''+r.id+'\')" style="background:#fff; border:1px solid var(--rojo); color:var(--rojo); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold;">\uD83D\uDDD1 Eliminar</button>';
+    const delBtn = role === 'rrhh'
+      ? '<button onclick="eliminarPlanta(\''+r.id+'\')" style="background:#fff; border:1px solid var(--rojo); color:var(--rojo); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold;">\uD83D\uDDD1 Eliminar</button>'
+      : '';
     return '<div class="rec">'
       + '<div class="top"><div><p class="planta-nom">\uD83C\uDFED '+(r.planta||'')+'</p>'
       + '<p class="sub">'+(sub.join(' \u00B7 ')||'')+'</p></div>'
